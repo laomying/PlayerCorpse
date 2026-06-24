@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "corpse",
+  "version": "${version}",
+  "name": "Corpse",
+  "description": "Spawns a corpse upon death that holds your items, rendered with your player skin.",
+  "authors": ["WorkBuddy"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/corpse/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.corpse.CorpseMod"
+    ],
+    "client": [
+      "com.corpse.CorpseModClient"
+    ]
+  },
+  "mixins": [
+    "corpse.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
