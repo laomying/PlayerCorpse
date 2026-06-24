@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "corpse",
   "version": "${version}",
-  "name": "Corpse",
+  "name": "PlayerCorpse",
   "description": "Spawns a corpse upon death that holds your items, rendered with your player skin.",
   "authors": ["WorkBuddy"],
   "contact": {},

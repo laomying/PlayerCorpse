@@ -7,7 +7,7 @@ version = "${mod_version}+${minecraft_version}"
 group = "com.corpse"
 
 base {
-    archivesName = "corpse"
+    archivesName = "playercorpse"
 }
 
 loom {
