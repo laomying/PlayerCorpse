@@ -112,6 +112,10 @@ public class CorpseEntity extends Entity implements MenuProvider {
 
     private void syncEquipmentData() {
         for (EquipmentSlot slot : EquipmentSlot.values()) {
+            // In 1.21.1, EquipmentSlot includes BODY which has no visual armor
+            // and would incorrectly overwrite HEAD via the default fallback.
+            if (slot == EquipmentSlot.BODY) continue;
+
             ItemStack stack = equipment.get(slot);
             if (stack == null || stack.isEmpty()) {
                 entityData.set(accessorForSlot(slot), ItemStack.EMPTY);
@@ -125,6 +129,8 @@ public class CorpseEntity extends Entity implements MenuProvider {
         if (level().isClientSide) {
             EnumMap<EquipmentSlot, ItemStack> eq = new EnumMap<>(EquipmentSlot.class);
             for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (slot == EquipmentSlot.BODY) continue;
+
                 ItemStack stack = entityData.get(accessorForSlot(slot));
                 if (!stack.isEmpty()) {
                     eq.put(slot, stack);
