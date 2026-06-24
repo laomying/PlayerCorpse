@@ -4,7 +4,6 @@ import com.corpse.CorpseMod;
 import com.corpse.gui.CorpseScreenHandler;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -33,7 +32,13 @@ public class CorpseEntity extends Entity implements MenuProvider {
     private static final EntityDataAccessor<String> PLAYER_NAME = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> PLAYER_UUID_STR = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Boolean> IS_SKELETON = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.BOOLEAN);
-    private static final EntityDataAccessor<String> EQUIPMENT_DATA = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.STRING);
+
+    private static final EntityDataAccessor<ItemStack> EQUIP_HEAD = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> EQUIP_CHEST = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> EQUIP_LEGS = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> EQUIP_FEET = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> EQUIP_MAINHAND = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> EQUIP_OFFHAND = SynchedEntityData.defineId(CorpseEntity.class, EntityDataSerializers.ITEM_STACK);
 
     private NonNullList<ItemStack> mainInventory;
     private NonNullList<ItemStack> armorInventory;
@@ -45,6 +50,7 @@ public class CorpseEntity extends Entity implements MenuProvider {
 
     private static final int SKELETON_TIME = 72000;
     private static final int EMPTY_DESPAWN_TIME = 6000;
+    private int equipmentSyncTicks = 10;
 
     public CorpseEntity(EntityType<?> type, Level level) {
         super(type, level);
@@ -92,44 +98,37 @@ public class CorpseEntity extends Entity implements MenuProvider {
         return corpse;
     }
 
+    private static EntityDataAccessor<ItemStack> accessorForSlot(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> EQUIP_HEAD;
+            case CHEST -> EQUIP_CHEST;
+            case LEGS -> EQUIP_LEGS;
+            case FEET -> EQUIP_FEET;
+            case MAINHAND -> EQUIP_MAINHAND;
+            case OFFHAND -> EQUIP_OFFHAND;
+            default -> EQUIP_HEAD;
+        };
+    }
+
     private void syncEquipmentData() {
-        // Simple text format: "SLOT:namespace:item_id;..."
-        // Example: "HEAD:minecraft:iron_helmet;CHEST:fantasy_armor:dragon_chestplate"
-        StringBuilder sb = new StringBuilder();
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             ItemStack stack = equipment.get(slot);
-            if (stack != null && !stack.isEmpty()) {
-                if (sb.length() > 0) sb.append(';');
-                sb.append(slot.name()).append(':')
-                        .append(net.minecraft.core.registries.BuiltInRegistries.ITEM
-                                .getKey(stack.getItem()).toString());
+            if (stack == null || stack.isEmpty()) {
+                entityData.set(accessorForSlot(slot), ItemStack.EMPTY);
+            } else {
+                entityData.set(accessorForSlot(slot), stack.copy());
             }
         }
-        entityData.set(EQUIPMENT_DATA, sb.toString());
     }
 
     public EnumMap<EquipmentSlot, ItemStack> getEquipment() {
         if (level().isClientSide) {
-            String equipStr = entityData.get(EQUIPMENT_DATA);
             EnumMap<EquipmentSlot, ItemStack> eq = new EnumMap<>(EquipmentSlot.class);
-            if (equipStr.isEmpty()) return eq;
-            try {
-                // Parse "SLOT:namespace:path" format (colon in slot separator, then colon in ResourceLocation)
-                for (String part : equipStr.split(";")) {
-                    int firstColon = part.indexOf(':');
-                    if (firstColon < 0) continue;
-                    String slotName = part.substring(0, firstColon);
-                    String itemId = part.substring(firstColon + 1);
-                    EquipmentSlot slot = EquipmentSlot.valueOf(slotName);
-                    net.minecraft.world.item.Item item =
-                            net.minecraft.core.registries.BuiltInRegistries.ITEM
-                                    .get(net.minecraft.resources.ResourceLocation.parse(itemId));
-                    if (item != null) {
-                        eq.put(slot, new ItemStack(item));
-                    }
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                ItemStack stack = entityData.get(accessorForSlot(slot));
+                if (!stack.isEmpty()) {
+                    eq.put(slot, stack);
                 }
-            } catch (Exception e) {
-                CorpseMod.LOGGER.warn("Failed to parse equipment: {}", e.getMessage());
             }
             return eq;
         }
@@ -140,10 +139,8 @@ public class CorpseEntity extends Entity implements MenuProvider {
     public void tick() {
         super.tick();
 
-        // Re-sync equipment data on every tick — needed for chunk reload scenarios
-        // where EntityDataAccessor may not have been sent after readAdditionalSaveData.
-        // entityData.set() internally only sends an update when the value changes.
-        if (!level().isClientSide) {
+        if (!level().isClientSide && equipmentSyncTicks > 0) {
+            equipmentSyncTicks--;
             syncEquipmentData();
         }
 
@@ -216,7 +213,6 @@ public class CorpseEntity extends Entity implements MenuProvider {
         return InteractionResult.SUCCESS;
     }
 
-    // MenuProvider implementation
     @Override
     public AbstractContainerMenu createMenu(int syncId, Inventory playerInventory, Player player) {
         return new CorpseScreenHandler(syncId, playerInventory, this);
@@ -297,7 +293,12 @@ public class CorpseEntity extends Entity implements MenuProvider {
         builder.define(PLAYER_NAME, "");
         builder.define(PLAYER_UUID_STR, "");
         builder.define(IS_SKELETON, false);
-        builder.define(EQUIPMENT_DATA, "");
+        builder.define(EQUIP_HEAD, ItemStack.EMPTY);
+        builder.define(EQUIP_CHEST, ItemStack.EMPTY);
+        builder.define(EQUIP_LEGS, ItemStack.EMPTY);
+        builder.define(EQUIP_FEET, ItemStack.EMPTY);
+        builder.define(EQUIP_MAINHAND, ItemStack.EMPTY);
+        builder.define(EQUIP_OFFHAND, ItemStack.EMPTY);
     }
 
     @Override

@@ -1,5 +1,6 @@
 {
   "entity.corpse.corpse": "遗体",
   "entity.corpse.corpse_of": "%s 的遗体",
-  "gui.corpse.inventory": "%s 的物品"
+  "gui.corpse.inventory": "%s 的物品",
+  "command.corpse.killall": "已移除 %s 个遗体"
 }

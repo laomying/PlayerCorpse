@@ -1,5 +1,6 @@
 {
   "entity.corpse.corpse": "Corpse",
   "entity.corpse.corpse_of": "Corpse of %s",
-  "gui.corpse.inventory": "%s's Inventory"
+  "gui.corpse.inventory": "%s's Inventory",
+  "command.corpse.killall": "Removed %s corpse(s)"
 }

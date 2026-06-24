@@ -1,9 +1,11 @@
 package com.corpse;
 
+import com.corpse.command.CorpseCommand;
 import com.corpse.entity.CorpseEntity;
 import com.corpse.event.DeathEventHandler;
 import com.corpse.gui.CorpseScreenHandler;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -39,6 +41,8 @@ public class CorpseMod implements ModInitializer {
         LOGGER.info("Corpse Mod initializing...");
 
         DeathEventHandler.register();
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                CorpseCommand.register(dispatcher));
 
         LOGGER.info("Corpse Mod initialized!");
     }
